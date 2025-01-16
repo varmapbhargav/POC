@@ -1,0 +1,16 @@
+.idea/*
+.angular
+build
+bundle
+dist
+node_modules
+src/**.js
+coverage
+*.log
+*.tsbuildinfo
+docs
+test-results
+playwright-report
+example
+allure-results
+packages/discovery/mock_local_storage

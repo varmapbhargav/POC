@@ -1,0 +1,26 @@
+import { expect } from "chai";
+
+import { defaultArgs } from "../src/index.js";
+import { argsToArray } from "../src/lib/dockerode.js";
+
+describe("nwaku", () => {
+  it("Correctly serialized arguments", function () {
+    const args = defaultArgs();
+    Object.assign(args, { portsShift: 42 });
+
+    const actual = argsToArray(args);
+
+    const expected = [
+      "--listen-address=0.0.0.0",
+      "--relay=false",
+      "--rest=true",
+      "--rest-admin=true",
+      "--websocket-support=true",
+      "--log-level=TRACE",
+      "--pubsub-topic=/waku/2/rs/0/0",
+      "--ports-shift=42"
+    ];
+
+    expect(actual).to.deep.equal(expected);
+  });
+});
