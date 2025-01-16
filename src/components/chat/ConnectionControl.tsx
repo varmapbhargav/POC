@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useWaku } from '@/lib/waku/waku-context';
 import { Loader2, Power, Users } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
 
 export function ConnectionControl() {
