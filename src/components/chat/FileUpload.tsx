@@ -1,98 +1,64 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, File, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import { useWaku } from '@/lib/waku/waku-context';
+import { Paperclip, X } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 interface FileUploadProps {
-  onFileSelect: (file: File) => void;
-  onRemove: () => void;
-  file?: File;
-  progress?: number;
+  onFileSelect: (file: File | null) => void;
+  selectedFile: File | null;
 }
 
-export function FileUpload({ onFileSelect, onRemove, file, progress }: FileUploadProps) {
-  const [dragOver, setDragOver] = useState(false);
+export function FileUpload({ onFileSelect, selectedFile }: FileUploadProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isInitialized } = useWaku();
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(true);
-  };
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const handleDragLeave = () => {
-    setDragOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      onFileSelect(files[0]);
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast.error('File size exceeds 10MB limit');
+      return;
     }
+
+    onFileSelect(file);
   };
 
   return (
-    <AnimatePresence>
-      {!file ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          className={`border-2 border-dashed rounded-lg p-4 text-center ${
-            dragOver ? 'border-primary bg-accent/50' : 'border-border'
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+    <div className="relative">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
+        disabled={!isInitialized}
+      />
+      
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={!isInitialized}
+        className={selectedFile ? 'text-primary' : ''}
+      >
+        <Paperclip className="h-5 w-5" />
+      </Button>
+
+      {selectedFile && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => onFileSelect(null)}
+          className="absolute -right-2 -top-2 h-4 w-4 rounded-full bg-background border shadow-sm p-0"
         >
-          <input
-            type="file"
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && onFileSelect(e.target.files[0])}
-            id="file-upload"
-          />
-          <label
-            htmlFor="file-upload"
-            className="flex flex-col items-center gap-2 cursor-pointer"
-          >
-            <div className="p-3 rounded-full bg-accent">
-              <Image className="w-6 h-6" />
-            </div>
-            <p className="text-sm font-medium">
-              Drop files here or click to upload
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Support for images and documents
-            </p>
-          </label>
-        </motion.div>
-      ) : (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          className="border rounded-lg p-3"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center space-x-2">
-              <File className="w-5 h-5" />
-              <span className="text-sm font-medium">{file.name}</span>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onRemove}
-              className="h-8 w-8"
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-          {typeof progress === 'number' && (
-            <Progress value={progress} className="h-1" />
-          )}
-        </motion.div>
+          <X className="h-3 w-3" />
+        </Button>
       )}
-    </AnimatePresence>
+    </div>
   );
 }

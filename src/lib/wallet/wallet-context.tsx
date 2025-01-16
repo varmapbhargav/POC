@@ -30,21 +30,32 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
+  /**
+   * Handles changes to the connected accounts.
+   * Updates the address and connection state.
+   */
   const handleAccountsChanged = useCallback((accounts: string[]) => {
     if (accounts.length === 0) {
+      // No accounts connected
       setAddress(null);
       setIsConnected(false);
       localStorage.removeItem('walletConnected');
+      toast.info('Wallet disconnected');
     } else {
+      // Update the connected address
       setAddress(accounts[0]);
       setIsConnected(true);
       localStorage.setItem('walletConnected', 'true');
+      toast.success('Wallet connected successfully');
     }
   }, []);
 
+  /**
+   * Connects to the wallet using `window.ethereum`.
+   */
   const connect = async () => {
     if (!window.ethereum) {
-      toast.error('Please install MetaMask to connect your wallet');
+      toast.error('Please install MetaMask or an Ethereum-compatible wallet');
       return;
     }
 
@@ -62,33 +73,56 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  /**
+   * Disconnects the wallet by resetting the state.
+   */
   const disconnect = () => {
     setAddress(null);
     setIsConnected(false);
     localStorage.removeItem('walletConnected');
+    toast.info('Wallet disconnected');
   };
 
+  /**
+   * Initializes the wallet connection and sets up event listeners.
+   */
   useEffect(() => {
-    // Check if wallet was previously connected
-    const wasConnected = localStorage.getItem('walletConnected') === 'true';
-    
-    if (wasConnected && window.ethereum) {
-      connect();
-    }
+    const initializeWallet = async () => {
+      if (!window.ethereum) {
+        return;
+      }
 
-    if (window.ethereum) {
+      // Check if wallet was previously connected
+      const wasConnected = localStorage.getItem('walletConnected') === 'true';
+      if (wasConnected) {
+        try {
+          const accounts = await window.ethereum.request({ 
+            method: 'eth_accounts' 
+          });
+          handleAccountsChanged(accounts);
+        } catch (error) {
+          console.error('Failed to fetch accounts:', error);
+        }
+      }
+
       // Listen for account changes
       window.ethereum.on('accountsChanged', handleAccountsChanged);
-      
+
       // Listen for chain changes
       window.ethereum.on('chainChanged', () => {
         window.location.reload();
       });
-    }
+    };
+
+    initializeWallet();
 
     return () => {
       if (window.ethereum) {
+        // Clean up event listeners
         window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+        window.ethereum.removeListener('chainChanged', () => {
+          window.location.reload();
+        });
       }
     };
   }, [handleAccountsChanged]);

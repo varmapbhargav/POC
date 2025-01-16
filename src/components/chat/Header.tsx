@@ -15,6 +15,8 @@ import {
   Archive,
   VolumeX,
   X,
+  Users,
+  Power
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -26,6 +28,9 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { useWaku } from '@/lib/waku/waku-context';
+import { Badge } from '@/components/ui/badge';
+import { WalletConnect } from '@/components/chat/WalletConnect';
 
 interface HeaderProps {
   user: {
@@ -39,6 +44,15 @@ interface HeaderProps {
 export function Header({ user, children }: HeaderProps) {
   const [showSearch, setShowSearch] = useState(false);
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(true);
+  const { isInitialized, isConnecting, peers, connect, disconnect } = useWaku();
+
+  const handleWakuToggle = async () => {
+    if (isInitialized) {
+      await disconnect();
+    } else {
+      await connect();
+    }
+  };
 
   return (
     <motion.div
@@ -112,19 +126,55 @@ export function Header({ user, children }: HeaderProps) {
           </AnimatePresence>
 
           <motion.div className="flex items-center gap-2" layout>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                "bg-white/5 border border-white/10",
-                "hover:bg-white/10 hover:border-white/20",
-                "transition-all duration-200"
+            {/* Waku Connection Status */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant={isInitialized ? "destructive" : "default"}
+                size="sm"
+                onClick={handleWakuToggle}
+                disabled={isConnecting}
+                className={cn(
+                  "relative transition-all duration-200",
+                  isInitialized ? "bg-red-500/10 hover:bg-red-500/20" : "bg-green-500/10 hover:bg-green-500/20"
+                )}
+              >
+                <AnimatePresence mode="wait">
+                  {isConnecting ? (
+                    <motion.div
+                      key="connecting"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 flex items-center justify-center"
+                    >
+                      <Power className="h-4 w-4 animate-spin" />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="status"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex items-center gap-2"
+                    >
+                      <Power className="h-4 w-4" />
+                      <span>{isInitialized ? 'Disconnect' : 'Connect'}</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Button>
+
+              {isInitialized && (
+                <Badge 
+                  variant="secondary"
+                  className="bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                  <Users className="h-3 w-3 mr-1" />
+                  {peers} peer{peers !== 1 ? 's' : ''}
+                </Badge>
               )}
-              onClick={() => setShowSearch(!showSearch)}
-            >
-              <Search className="h-5 w-5" />
-            </Button>
-            
+            </div>
+
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button
                 variant="ghost"

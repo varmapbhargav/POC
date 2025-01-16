@@ -2,10 +2,10 @@ import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWaku } from '@/lib/waku/waku-context';
 import { useWallet } from '@/lib/wallet/wallet-context';
-import { format } from 'date-fns';
 import { User, FileIcon, Image as ImageIcon, Film, Music, FileText } from 'lucide-react';
 import { truncateEthAddress } from '@/lib/utils';
-import { FileData } from '@/lib/waku/waku-service';
+import { format } from 'date-fns';
+import type { FileData } from '@/lib/waku/waku-service';
 
 function FilePreview({ file }: { file: FileData }) {
   const isImage = file.type.startsWith('image/');
@@ -23,60 +23,30 @@ function FilePreview({ file }: { file: FileData }) {
     return <FileIcon className="h-4 w-4" />;
   };
 
-  const getFilePreview = () => {
-    const base64Data = `data:${file.type};base64,${file.data}`;
-
-    if (isImage) {
-      return (
+  return (
+    <div className="mt-2">
+      {isImage ? (
         <img
-          src={base64Data}
+          src={`data:${file.type};base64,${file.data}`}
           alt={file.name}
           className="max-w-[300px] max-h-[200px] rounded-lg object-cover"
         />
-      );
-    }
-
-    if (isVideo) {
-      return (
-        <video
-          src={base64Data}
-          controls
-          className="max-w-[300px] max-h-[200px] rounded-lg"
-        />
-      );
-    }
-
-    if (isAudio) {
-      return (
-        <audio
-          src={base64Data}
-          controls
-          className="max-w-[300px]"
-        />
-      );
-    }
-
-    return (
-      <div className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
-        {getFileIcon()}
-        <div className="flex flex-col">
-          <span className="text-sm truncate max-w-[200px]">{file.name}</span>
-          <span className="text-xs text-muted-foreground">
-            {(file.size / 1024).toFixed(1)} KB
-          </span>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <a
-      href={`data:${file.type};base64,${file.data}`}
-      download={file.name}
-      className="block mt-2"
-    >
-      {getFilePreview()}
-    </a>
+      ) : (
+        <a
+          href={`data:${file.type};base64,${file.data}`}
+          download={file.name}
+          className="flex items-center gap-2 p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+        >
+          {getFileIcon()}
+          <div className="flex flex-col">
+            <span className="text-sm truncate max-w-[200px]">{file.name}</span>
+            <span className="text-xs text-muted-foreground">
+              {(file.size / 1024).toFixed(1)} KB
+            </span>
+          </div>
+        </a>
+      )}
+    </div>
   );
 }
 
@@ -85,6 +55,7 @@ export function MessageList() {
   const { address: currentUserAddress } = useWallet();
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -124,11 +95,13 @@ export function MessageList() {
   }
 
   return (
-    <div className="flex-1 p-4 space-y-4">
+    <div className="flex-1 p-4 space-y-4 overflow-y-auto">
       <AnimatePresence initial={false}>
         {messages.map((msg, index) => {
           const isCurrentUser = msg.address === currentUserAddress;
-          
+          const showTimestamp = index === 0 || 
+            messages[index - 1].timestamp < msg.timestamp - 5 * 60 * 1000;
+
           return (
             <motion.div
               key={`${msg.timestamp}-${index}`}
@@ -139,28 +112,30 @@ export function MessageList() {
                 isCurrentUser ? 'flex-row-reverse' : ''
               }`}
             >
-              <div className={`w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors ${
-                isCurrentUser ? 'bg-primary/20' : ''
-              }`}>
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-accent flex items-center justify-center">
                 <User className="w-4 h-4" />
               </div>
-              <div className={`flex-1 min-w-0 ${
-                isCurrentUser ? 'items-end text-right' : ''
-              }`}>
-                <div className={`flex items-center gap-2 ${
-                  isCurrentUser ? 'justify-end' : ''
-                }`}>
-                  <span className="text-xs text-muted-foreground">
-                    {truncateEthAddress(msg.address)}
+
+              <div className={`flex flex-col ${isCurrentUser ? 'items-end' : ''}`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-medium">
+                    {msg.nick || truncateEthAddress(msg.address)}
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    {format(msg.timestamp, 'HH:mm')}
-                  </span>
+                  {showTimestamp && (
+                    <span className="text-xs text-muted-foreground">
+                      {format(msg.timestamp, 'HH:mm')}
+                    </span>
+                  )}
                 </div>
-                <div className={`mt-1 text-sm break-words ${
-                  isCurrentUser ? 'bg-primary/10' : 'bg-white/5'
-                } p-3 rounded-lg inline-block max-w-[80%]`}>
-                  {msg.message}
+
+                <div
+                  className={`rounded-lg px-4 py-2 max-w-[80%] break-words ${
+                    isCurrentUser
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted'
+                  }`}
+                >
+                  <div>{msg.message}</div>
                   {msg.file && <FilePreview file={msg.file} />}
                 </div>
               </div>

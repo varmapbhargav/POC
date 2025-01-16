@@ -1,27 +1,32 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useWaku } from '@/lib/waku/waku-context';
+import { useWallet } from '@/lib/wallet/wallet-context';
 import { Loader2, Power, Users } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useEffect } from 'react';
+import { toast } from 'sonner';
 
 export function ConnectionControl() {
-  const { isInitialized, isConnecting, peers, connect, disconnect, error, clearError } = useWaku();
-  const { toast } = useToast();
+  // Wallet context
+  const { isConnected, address } = useWallet();
 
-  useEffect(() => {
-    if (error) {
-      toast({
-        title: 'Connection Error',
-        description: error,
-        variant: 'destructive',
-      });
-      clearError();
+  // Waku context
+  const { isInitialized, isConnecting, peers, connect, disconnect } = useWaku();
+
+  /**
+   * Handles the connection to the Waku network.
+   * Ensures the wallet is connected before initializing Waku.
+   */
+  const handleConnect = async () => {
+    if (!isConnected || !address) {
+      toast.error('Please connect your wallet first');
+      return;
     }
-  }, [error, toast, clearError]);
+    await connect();
+  };
 
   return (
     <div className="flex items-center gap-4">
+      {/* Peer count display (only shown when Waku is initialized) */}
       <AnimatePresence mode="wait">
         {isInitialized && (
           <motion.div
@@ -37,15 +42,17 @@ export function ConnectionControl() {
         )}
       </AnimatePresence>
 
+      {/* Connect/Disconnect button */}
       <Button
-        variant={isInitialized ? "destructive" : "default"}
+        variant={isInitialized ? 'destructive' : 'default'}
         size="sm"
-        onClick={isInitialized ? disconnect : connect}
-        disabled={isConnecting}
+        onClick={isInitialized ? disconnect : handleConnect}
+        disabled={isConnecting || !isConnected}
         className="relative"
       >
         <AnimatePresence mode="wait">
           {isConnecting ? (
+            // Loading spinner animation
             <motion.div
               key="loading"
               initial={{ opacity: 0 }}
@@ -56,6 +63,7 @@ export function ConnectionControl() {
               <Loader2 className="w-4 h-4 animate-spin" />
             </motion.div>
           ) : (
+            // Connect/Disconnect button content
             <motion.div
               key="power"
               initial={{ opacity: 0 }}
